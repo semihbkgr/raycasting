@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use glam::{U16Vec2, Vec2};
 
 const MAP_WIDTH: usize = 24;
@@ -81,8 +79,6 @@ const WORLD_MAP: [[u8; MAP_WIDTH]; MAP_HEIGHT] = [
 ];
 
 pub struct RayCasting {
-    width: usize,
-    height: usize,
     world: Vec<Vec<u8>>,
     pos: Vec2,
     dir: Vec2,
@@ -92,8 +88,6 @@ pub struct RayCasting {
 impl Default for RayCasting {
     fn default() -> Self {
         Self {
-            width: MAP_WIDTH,
-            height: MAP_HEIGHT,
             world: WORLD_MAP.to_vec().iter().map(|v| v.to_vec()).collect(),
             pos: Vec2::new(MAP_WIDTH as f32 / 2.0, MAP_HEIGHT as f32 / 2.0),
             dir: Vec2::new(-1.0, 0.0),
@@ -103,8 +97,8 @@ impl Default for RayCasting {
 }
 
 impl RayCasting {
-    pub fn lines(&mut self, _: Duration, w: u16, h: u16) -> Vec<(U16Vec2, U16Vec2, u8)> {
-        let mut lines = Vec::<(U16Vec2, U16Vec2, u8)>::new();
+    pub fn lines(&mut self, w: u16, h: u16) -> Vec<(U16Vec2, U16Vec2, u8, bool)> {
+        let mut lines = Vec::<(U16Vec2, U16Vec2, u8, bool)>::new();
         for x in 0..w {
             let ray_dir = self.dir + self.plane * Vec2::splat((2 * x as i64 / w as i64 - 1) as f32);
 
@@ -182,8 +176,22 @@ impl RayCasting {
                 U16Vec2::new(x, draw_start as u16),
                 U16Vec2::new(x, draw_end as u16),
                 self.world[map_y][map_x],
+                side != 0,
             ));
         }
         lines
+    }
+
+    pub fn transform_cam(&mut self, move_factor: f32, rotation_factor: f32) {
+        self.pos += self.dir * move_factor;
+        // rotation matrix
+        //[ cos(a) -sin(a) ]
+        //[ sin(a)  cos(a) ]
+        let old_dir_x = self.dir.x;
+        self.dir.x = self.dir.x * rotation_factor.cos() - self.dir.y * -rotation_factor.sin();
+        self.dir.y = old_dir_x * rotation_factor.sin() + self.dir.y * -rotation_factor.cos();
+        let old_plane_x = self.plane.x;
+        self.plane.x = self.plane.x * rotation_factor.cos() - self.plane.y * rotation_factor.sin();
+        self.plane.y = old_plane_x * rotation_factor.sin() + self.plane.y * rotation_factor.cos();
     }
 }
