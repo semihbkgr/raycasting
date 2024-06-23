@@ -79,17 +79,17 @@ const WORLD_MAP: [[u8; MAP_WIDTH]; MAP_HEIGHT] = [
 ];
 
 pub struct RayCasting {
-    world: Vec<Vec<u8>>,
-    pos: Vec2,
-    dir: Vec2,
-    plane: Vec2,
+    pub world: Vec<Vec<u8>>,
+    pub pos: Vec2,
+    pub dir: Vec2,
+    pub plane: Vec2,
 }
 
 impl Default for RayCasting {
     fn default() -> Self {
         Self {
             world: WORLD_MAP.to_vec().iter().map(|v| v.to_vec()).collect(),
-            pos: Vec2::new(MAP_WIDTH as f32 / 2.0, MAP_HEIGHT as f32 / 2.0),
+            pos: Vec2::new(22.0, 12.0),
             dir: Vec2::new(-1.0, 0.0),
             plane: Vec2::new(0.0, 0.66),
         }
@@ -100,7 +100,7 @@ impl RayCasting {
     pub fn lines(&mut self, w: u16, h: u16) -> Vec<(U16Vec2, U16Vec2, u8, bool)> {
         let mut lines = Vec::<(U16Vec2, U16Vec2, u8, bool)>::new();
         for x in 0..w {
-            let ray_dir = self.dir + self.plane * Vec2::splat((2 * x as i64 / w as i64 - 1) as f32);
+            let ray_dir = self.dir + self.plane * Vec2::splat(2.0 * x as f32 / w as f32 - 1.0);
 
             let mut map_x = self.pos.x as usize;
             let mut map_y = self.pos.y as usize;
@@ -146,7 +146,7 @@ impl RayCasting {
                     map_x = (map_x as i8 + step_x) as usize;
                     side = 0;
                 } else {
-                    side_dist.y += delta_dist_x;
+                    side_dist.y += delta_dist_y;
                     map_y = (map_y as i8 + step_y) as usize;
                     side = 1;
                 }
@@ -183,15 +183,22 @@ impl RayCasting {
     }
 
     pub fn transform_cam(&mut self, move_factor: f32, rotation_factor: f32) {
-        self.pos += self.dir * move_factor;
+        if move_factor != 0.0 {
+            self.pos += self.dir * move_factor;
+        }
+
         // rotation matrix
         //[ cos(a) -sin(a) ]
         //[ sin(a)  cos(a) ]
-        let old_dir_x = self.dir.x;
-        self.dir.x = self.dir.x * rotation_factor.cos() - self.dir.y * -rotation_factor.sin();
-        self.dir.y = old_dir_x * rotation_factor.sin() + self.dir.y * -rotation_factor.cos();
-        let old_plane_x = self.plane.x;
-        self.plane.x = self.plane.x * rotation_factor.cos() - self.plane.y * rotation_factor.sin();
-        self.plane.y = old_plane_x * rotation_factor.sin() + self.plane.y * rotation_factor.cos();
+        if rotation_factor != 0.0 {
+            let old_dir_x = self.dir.x;
+            self.dir.x = self.dir.x * rotation_factor.cos() - self.dir.y * rotation_factor.sin();
+            self.dir.y = old_dir_x * rotation_factor.sin() + self.dir.y * rotation_factor.cos();
+            let old_plane_x = self.plane.x;
+            self.plane.x =
+                self.plane.x * rotation_factor.cos() - self.plane.y * rotation_factor.sin();
+            self.plane.y =
+                old_plane_x * rotation_factor.sin() + self.plane.y * rotation_factor.cos();
+        }
     }
 }
