@@ -1,7 +1,8 @@
+use std::time::Instant;
+
 use glam::Vec2;
 use raycasting::RayCasting;
 use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::rect::{Point, Rect};
 
@@ -31,54 +32,58 @@ fn main() -> Result<(), String> {
         plane: Vec2::new(0.0, 0.66),
     };
 
+    let mut last_frame_time = Instant::now();
+    let mut delta_time;
+
+    let mut events = sdl_context.event_pump()?;
+
     'mainloop: loop {
-        let mut move_factor = 0.0;
-        let mut rotation_factor = 0.0;
-        for event in sdl_context.event_pump()?.poll_iter() {
+        let now = Instant::now();
+        delta_time = now.duration_since(last_frame_time).as_secs_f32();
+        last_frame_time = now;
+
+        for event in events.poll_iter() {
             match event {
                 Event::Quit { .. } => break 'mainloop,
-                Event::KeyDown {
-                    keycode: Some(Keycode::Up),
-                    ..
-                }
-                | Event::KeyDown {
-                    keycode: Some(Keycode::W),
-                    ..
-                } => move_factor += 0.05,
-                Event::KeyDown {
-                    keycode: Some(Keycode::Down),
-                    ..
-                }
-                | Event::KeyDown {
-                    keycode: Some(Keycode::S),
-                    ..
-                } => move_factor -= 0.05,
-                Event::KeyDown {
-                    keycode: Some(Keycode::Left),
-                    ..
-                }
-                | Event::KeyDown {
-                    keycode: Some(Keycode::A),
-                    ..
-                } => rotation_factor += 0.03,
-                Event::KeyDown {
-                    keycode: Some(Keycode::Right),
-                    ..
-                }
-                | Event::KeyDown {
-                    keycode: Some(Keycode::D),
-                    ..
-                } => rotation_factor -= 0.03,
                 _ => {}
             }
+        }
+
+        let mut move_factor = 0.0;
+        let mut rotation_factor = 0.0;
+
+        let keyboard_state = events.keyboard_state();
+        if keyboard_state.is_scancode_pressed(sdl2::keyboard::Scancode::W)
+            || keyboard_state.is_scancode_pressed(sdl2::keyboard::Scancode::Up)
+        {
+            move_factor += 3.0 * delta_time;
+        }
+        if keyboard_state.is_scancode_pressed(sdl2::keyboard::Scancode::S)
+            || keyboard_state.is_scancode_pressed(sdl2::keyboard::Scancode::Down)
+        {
+            move_factor -= 3.0 * delta_time;
+        }
+        if keyboard_state.is_scancode_pressed(sdl2::keyboard::Scancode::A)
+            || keyboard_state.is_scancode_pressed(sdl2::keyboard::Scancode::Left)
+        {
+            rotation_factor += 0.9 * delta_time;
+        }
+        if keyboard_state.is_scancode_pressed(sdl2::keyboard::Scancode::D)
+            || keyboard_state.is_scancode_pressed(sdl2::keyboard::Scancode::Right)
+        {
+            rotation_factor -= 0.9 * delta_time;
         }
 
         raycasting.transform_cam(move_factor, rotation_factor);
         let lines: Vec<(glam::U16Vec2, glam::U16Vec2, u8, bool)> =
             raycasting.lines(WINDOW_WIDTH as u16, WINDOW_HEIGHT as u16);
 
+        // clear the screen
         canvas.set_draw_color(Color::RGB(43, 44, 47));
         canvas.clear();
+
+        canvas.set_draw_color(Color::RGB(52, 134, 235));
+        canvas.fill_rect(Rect::new(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT / 2))?;
 
         // render the world
         for line in lines {
@@ -87,12 +92,10 @@ fn main() -> Result<(), String> {
                 color = fade(color);
             }
             canvas.set_draw_color(color);
-            canvas
-                .draw_line(
-                    Point::new(line.0.x as i32, line.0.y as i32),
-                    Point::new(line.1.x as i32, line.1.y as i32),
-                )
-                .unwrap();
+            canvas.draw_line(
+                Point::new(line.0.x as i32, line.0.y as i32),
+                Point::new(line.1.x as i32, line.1.y as i32),
+            )?;
         }
 
         // render the map
@@ -101,30 +104,26 @@ fn main() -> Result<(), String> {
                 let color = map_index_to_color(*index);
                 canvas.set_draw_color(color);
                 let rect = Rect::new(x as i32 * 5, y as i32 * 5, 5, 5);
-                canvas.fill_rect(rect).unwrap();
+                canvas.fill_rect(rect)?;
             }
         }
         canvas.set_draw_color(Color::BLACK);
-        canvas
-            .fill_rect(Rect::new(
-                (raycasting.pos.x * 5.0) as i32 - 1,
-                (raycasting.pos.y * 5.0) as i32 - 1,
-                3,
-                3,
-            ))
-            .unwrap();
-        canvas
-            .draw_line(
-                Point::new(
-                    (raycasting.pos.x * 5.0) as i32,
-                    (raycasting.pos.y * 5.0) as i32,
-                ),
-                Point::new(
-                    (raycasting.pos * 5.0 + raycasting.dir.normalize() * 5.0).x as i32,
-                    (raycasting.pos * 5.0 + raycasting.dir.normalize() * 5.0).y as i32,
-                ),
-            )
-            .unwrap();
+        canvas.fill_rect(Rect::new(
+            (raycasting.pos.x * 5.0) as i32 - 1,
+            (raycasting.pos.y * 5.0) as i32 - 1,
+            3,
+            3,
+        ))?;
+        canvas.draw_line(
+            Point::new(
+                (raycasting.pos.x * 5.0) as i32,
+                (raycasting.pos.y * 5.0) as i32,
+            ),
+            Point::new(
+                (raycasting.pos * 5.0 + raycasting.dir.normalize() * 5.0).x as i32,
+                (raycasting.pos * 5.0 + raycasting.dir.normalize() * 5.0).y as i32,
+            ),
+        )?;
 
         canvas.present();
     }
@@ -212,7 +211,7 @@ const WORLD_MAP: [[u8; MAP_WIDTH]; MAP_HEIGHT] = [
 
 fn map_index_to_color(i: u8) -> Color {
     match i {
-        0 => Color::RGB(33, 34, 37),
+        0 => Color::RGB(43, 44, 47),
         1 => Color::RED,
         2 => Color::GREEN,
         3 => Color::BLUE,
