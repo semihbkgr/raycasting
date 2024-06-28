@@ -95,7 +95,14 @@ impl RayCasting {
 
     pub fn transform_cam(&mut self, move_factor: f32, rotation_factor: f32) {
         if move_factor != 0.0 {
-            self.pos += self.dir * move_factor;
+            if self.world[self.pos.y as usize][(self.pos + self.dir * move_factor).x as usize] == 0
+            {
+                self.pos.x += (self.dir * move_factor).x;
+            }
+            if self.world[(self.pos + self.dir * move_factor).y as usize][self.pos.x as usize] == 0
+            {
+                self.pos.y += (self.dir * move_factor).y;
+            }
         }
 
         // rotation matrix

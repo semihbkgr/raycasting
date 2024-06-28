@@ -99,29 +99,31 @@ fn main() -> Result<(), String> {
         }
 
         // render the map
+        let inc_x = (WINDOW_WIDTH - MAP_WIDTH as u32 * 5 - 10) as i32;
+        let inc_y = (WINDOW_HEIGHT - MAP_HEIGHT as u32 * 5 - 10) as i32;
         for (y, row) in raycasting.world.iter().enumerate() {
             for (x, index) in row.iter().enumerate() {
                 let color = map_index_to_color(*index);
                 canvas.set_draw_color(color);
-                let rect = Rect::new(x as i32 * 5, y as i32 * 5, 5, 5);
+                let rect = Rect::new(inc_x + x as i32 * 5, inc_y + y as i32 * 5, 5, 5);
                 canvas.fill_rect(rect)?;
             }
         }
         canvas.set_draw_color(Color::BLACK);
         canvas.fill_rect(Rect::new(
-            (raycasting.pos.x * 5.0) as i32 - 1,
-            (raycasting.pos.y * 5.0) as i32 - 1,
+            inc_x + (raycasting.pos.x * 5.0) as i32 - 1,
+            inc_y + (raycasting.pos.y * 5.0) as i32 - 1,
             3,
             3,
         ))?;
         canvas.draw_line(
             Point::new(
-                (raycasting.pos.x * 5.0) as i32,
-                (raycasting.pos.y * 5.0) as i32,
+                inc_x + (raycasting.pos.x * 5.0) as i32,
+                inc_y + (raycasting.pos.y * 5.0) as i32,
             ),
             Point::new(
-                (raycasting.pos * 5.0 + raycasting.dir.normalize() * 5.0).x as i32,
-                (raycasting.pos * 5.0 + raycasting.dir.normalize() * 5.0).y as i32,
+                inc_x + (raycasting.pos * 5.0 + raycasting.dir.normalize() * 5.0).x as i32,
+                inc_y + (raycasting.pos * 5.0 + raycasting.dir.normalize() * 5.0).y as i32,
             ),
         )?;
 
